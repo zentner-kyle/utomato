@@ -111,19 +111,15 @@ def main(window):
     pad = curses.textpad.Textbox(window.subpad(1, 80, 2, 0))
     on_break = False
     while True:
-        #try:
-            #char = window.getch()
-        #except KeyboardInterrupt:
-            #break
-        #if char != -1:
-            #key = chr(char)
         try:
-            key = window.getkey()
-        except KeyboardInterrupt as e:
-            raise e
-        except Exception:
-            pass
-        else:
+            char = window.getch()
+        except KeyboardInterrupt:
+            break
+# Check if char is an ascii value.
+# Unfortunately, curses.ascii.isascii returns True for -1.
+# So it can't be used here.
+        if char in range(0x80):
+            key = chr(char)
             if key == '\n':
                 if not timer.running():
                     timer.start()
