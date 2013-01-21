@@ -56,3 +56,6 @@ pip-log.txt
 *.la
 *.a
 
+
+# uTomato
+*.tasklist
