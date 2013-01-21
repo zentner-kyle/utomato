@@ -79,11 +79,19 @@ def add_done(task):
     _done_tasks.append(task)
 
 def save_db():
-    string = json.dumps(_done_tasks)
+    string = json.dumps(_done_tasks, indent=True)
     save_to_db(string)
 
+time_format_str = "%Y.%m.%d %H:%M:%S (%A) %Z"
+
+def format_time(t):
+    return time.strftime(time_format_str, t)
+
+def parse_time(t):
+    return to_sec(time.strptime(t, time_format_str))
+
 def save_to_db(contents):
-    filename = (time.strftime("%Y.%m.%d %H:%M:%S (%A)", time.localtime()) +
+    filename = (format_time(time.localtime()) +
                 ".tasklist")
     with open(filename, mode='a+') as f:
         try:
@@ -120,34 +128,36 @@ def main(window):
 # So it can't be used here.
         if char in range(0x80):
             key = chr(char)
-            if key == '\n':
-                if not timer.running():
-                    timer.start()
-            elif key == 's':
+            if key == 's':
                 timer.stop()
             elif key == 'q':
                 break
-            elif key == 'f':
-                timer.finish()
+            elif key == 'f' or key == ' ' and timer.done():
+                if on_break:
+                    timer.duration = work_duration
+                    timer.stop()
+                    on_break = False
+                else:
+                    if timer.running():
+                        add_done([pad.edit().strip(),
+                            format_time(time.localtime(calendar.timegm(timer.start_time))),
+                            format_time(time.localtime())])
+                    timer.duration = break_duration
+                    timer.start()
+                    on_break = True
+            elif key in '\n ':
+                if not timer.running():
+                    timer.start()
         title.put()
         timer.put()
-        if timer.done():
-            if on_break:
-                timer.duration = work_duration
-                timer.stop()
-                on_break = False
-            else:
-                add_done(pad.edit())
-                timer.duration = break_duration
-                timer.start()
-                on_break = True
         curses.doupdate()
 
 def main_wrapper(window):
     try:
         main(window)
-    except Exception:
-        pass
+    except Exception as e:
+        save_db()
+        raise e
 
 curses.wrapper(main_wrapper)
 save_db()
