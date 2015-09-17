@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-import curses
-import curses.textpad
-import curses.ascii
-import time
 import calendar
-import os.path
+import curses
+import curses.ascii
+import curses.textpad
 import json
+import os
+import os.path
+import time
 
 class Title(object):
 
@@ -54,8 +55,13 @@ class Timer(object):
         return time_out
 
     def get_str(self):
-        return "{:2}:{:02}".format(self.remaining() // 60, 
-                                   self.remaining() %  60)
+        remaining = self.remaining() 
+        fstr = " {:2}:{:02}"
+        if remaining < 0:
+            fstr = "-" + fstr[1:]
+            remaining = -remaining
+        return fstr.format(remaining // 60, 
+                           remaining %  60)
 
     def stop(self):
         self.start_time = None
@@ -116,7 +122,8 @@ def main(window):
     window.timeout(200)
     title = Title(window.derwin(0, 0))
     timer = Timer(window.derwin(1, 0), work_duration)
-    pad = curses.textpad.Textbox(window.subpad(1, 80, 2, 0))
+    pad_window = window.subpad(1, window.getmaxyx()[1], 2, 0)
+    pad = curses.textpad.Textbox(pad_window)
     on_break = False
     while True:
         try:
@@ -132,8 +139,18 @@ def main(window):
                 timer.stop()
             elif key == 'q':
                 break
-            elif key == 'f' or key == ' ' and timer.done():
+            elif key == 'f' or key in '\n ' and timer.done():
                 if on_break:
+                    old_text = pad.gather().strip()
+                    pad_window.addstr(0, 0, ' ' * len(old_text))
+                    pad_window.addstr(0, 0, 'Break.')
+                    new_text = pad.edit().strip()
+                    add_done([new_text,
+                        format_time(time.localtime(calendar.timegm(timer.start_time))),
+                        format_time(time.localtime())])
+                    pad_window.addstr(0, 0, ' ' * len(new_text))
+                    pad_window.addstr(0, 0, old_text)
+                    pad_window.noutrefresh()
                     timer.duration = work_duration
                     timer.stop()
                     on_break = False
@@ -159,5 +176,6 @@ def main_wrapper(window):
         save_db()
         raise e
 
+os.environ['TERM'] = 'rxvt-unicode-256color'
 curses.wrapper(main_wrapper)
 save_db()
